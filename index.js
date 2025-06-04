@@ -23,7 +23,7 @@ connectDB()
     });
   })
   .catch((err) => {
-    console.log("MongoDB Connection Failed !! ", err);
+    console.log("PostgreSQL Connection Failed !! ", err);
   });
 
 app.use(

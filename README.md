@@ -1,6 +1,6 @@
 # Pie Backend - Video Management API
 
-A Node.js/Express backend API for managing videos with metadata, user interactions, and pagination support. Built with MongoDB and Mongoose.
+A Node.js/Express backend API for managing videos with metadata, user interactions, and pagination support. Built with PostgreSQL and Prisma ORM.
 
 ## 🚀 Features
 
@@ -15,7 +15,7 @@ A Node.js/Express backend API for managing videos with metadata, user interactio
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: PostgreSQL with Prisma ORM
 - **Environment**: dotenv for configuration
 - **Development**: Nodemon for auto-restart
 
@@ -24,15 +24,15 @@ A Node.js/Express backend API for managing videos with metadata, user interactio
 Before you begin, ensure you have the following installed:
 
 - [Node.js](https://nodejs.org/) (v16 or higher)
-- [MongoDB](https://www.mongodb.com/) (local installation or MongoDB Atlas)
+- [PostgreSQL](https://www.postgresql.org/) (v12 or higher)
 - [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
 
 ## ⚙️ Installation & Setup
 
 ### 1. Clone the Repository
 ```bash
-git clone <repo-url>
-cd "PieBackend"
+git clone <your-repo-url>
+cd "Pie backend"
 ```
 
 ### 2. Install Dependencies
@@ -45,9 +45,8 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database Configuration
-MONGODB_URL=mongodb://localhost:27017/pie-backend
-# OR for MongoDB Atlas:
-# MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/pie-backend
+DATABASE_URL="postgresql://username:password@localhost:5432/pie_backend"
+# Replace with your PostgreSQL credentials
 
 # Server Configuration
 PORT=8000
@@ -58,26 +57,31 @@ CORS_ORIGIN=*
 
 ### 4. Database Setup
 
-#### Option A: Local MongoDB
-1. Install MongoDB locally
-2. Start MongoDB service:
-   ```bash
-   # Windows
-   net start MongoDB
-   
-   # macOS
-   brew services start mongodb-community
-   
-   # Linux
-   sudo systemctl start mongod
+#### Option A: Local PostgreSQL
+1. Install PostgreSQL locally
+2. Create a database:
+   ```sql
+   CREATE DATABASE pie_backend;
    ```
+3. Update the `DATABASE_URL` in `.env` with your credentials
 
-#### Option B: MongoDB Atlas (Cloud)
-1. Create account at [MongoDB Atlas](https://www.mongodb.com/atlas)
-2. Create a new cluster
+#### Option B: PostgreSQL Cloud (e.g., Supabase, Railway, Neon)
+1. Create account at your preferred PostgreSQL cloud provider
+2. Create a new database
 3. Get connection string and update `.env`
 
-### 5. Seed Database (Optional)
+### 5. Initialize Database Schema
+Generate Prisma client and push schema to database:
+
+```bash
+# Generate Prisma client
+npm run db:generate
+
+# Push schema to database
+npm run db:push
+```
+
+### 6. Seed Database (Optional)
 Populate the database with sample data:
 
 ```bash
@@ -87,10 +91,15 @@ npm run seed
 This creates:
 - 4 sample users
 - 5 sample videos
-- Meta items (thumbnails, tags)
+- Meta items (tags, categories, thumbnails)
 - Sample interactions (likes, views, comments)
 
-### 6. Start the Server
+### 7. Start the Server
+
+#### Development Mode
+```bash
+npm start
+```
 
 #### Production Mode
 ```bash
@@ -106,14 +115,11 @@ Pie backend/
 ├── controllers/
 │   └── videoController.js      # Video-related business logic
 ├── db/
-│   └── index.js               # Database connection
+│   └── index.js               # Prisma client setup
 ├── middleware/
 │   └── auth.js                # Authentication middleware
-├── models/
-│   ├── User.js                # User schema
-│   ├── Video.js               # Video schema
-│   ├── MetaItem.js            # Metadata schema
-│   └── Interaction.js         # Interactions schema
+├── prisma/
+│   └── schema.prisma          # Database schema definition
 ├── routes/
 │   └── videoRoutes.js         # Video API routes
 ├── scripts/
@@ -122,6 +128,57 @@ Pie backend/
 ├── index.js                   # Server entry point
 ├── package.json               # Dependencies and scripts
 └── README.md                  # This file
+```
+
+## 🗄️ Database Schema
+
+The application uses the following Prisma models:
+
+### User
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+### Video
+```prisma
+model Video {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  videoUrl    String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+```
+
+### MetaItem
+```prisma
+model MetaItem {
+  id           String   @id @default(cuid())
+  videoId      String
+  type         String
+  value        String
+  thumbnailUrl String?
+  label        String?
+}
+```
+
+### Interaction
+```prisma
+model Interaction {
+  id      String @id @default(cuid())
+  userId  String
+  videoId String
+  type    String  # 'like', 'view', 'comment'
+  content String?
+}
 ```
 
 ## 🔌 API Endpoints
@@ -273,5 +330,146 @@ Create a new Postman collection with the following requests:
 - **Routes**: Define API endpoints
 - **Scripts**: Utility scripts (seeding, migrations)
 
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+# Start development server with auto-reload
+npm start
+
+# Generate Prisma client after schema changes
+npm run db:generate
+
+# Push schema changes to database
+npm run db:push
+
+# Open Prisma Studio (database GUI)
+npm run db:studio
+
+# Seed database with sample data
+npm run seed
+
+# Run tests (to be implemented)
+npm test
+```
+
+### Database Management
+
+#### View Data
+```bash
+# Open Prisma Studio to view/edit data
+npm run db:studio
+```
+
+#### Schema Changes
+1. Modify `prisma/schema.prisma`
+2. Run `npm run db:generate` to update Prisma client
+3. Run `npm run db:push` to apply changes to database
+
+#### Reset Database
+```bash
+# Reset database and apply fresh schema
+npx prisma db push --force-reset
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### 1. PostgreSQL Connection Error
+```
+PostgreSQL could not be connected
+```
+**Solutions:**
+- Ensure PostgreSQL is running locally
+- Check `DATABASE_URL` in `.env` file
+- Verify database credentials and database exists
+- Test connection: `npx prisma db pull`
+
+#### 2. Prisma Client Error
+```
+PrismaClientInitializationError: Cannot reach database server
+```
+**Solutions:**
+- Run `npm run db:generate` to regenerate Prisma client
+- Check if database URL is correct
+- Ensure database is accessible
+
+#### 3. Schema Sync Issues
+```
+Database schema is not in sync
+```
+**Solutions:**
+- Run `npm run db:push` to sync schema
+- Or run `npx prisma db pull` to pull schema from database
+
+#### 4. Port Already in Use
+```
+Error: listen EADDRINUSE :::8000
+```
+**Solutions:**
+- Change PORT in `.env` file
+- Stop other processes using port 8000
+- Use `netstat -ano | findstr :8000` (Windows) to find conflicting processes
+
+### Debug Mode
+Add debug logging by setting environment variable:
+```bash
+DEBUG=prisma:* npm start
+```
+
+## 🚀 Deployment
+
+### Production Checklist
+- [ ] Update authentication middleware
+- [ ] Add input validation
+- [ ] Configure production PostgreSQL
+- [ ] Set up environment variables
+- [ ] Add rate limiting
+- [ ] Configure HTTPS
+- [ ] Add logging service
+- [ ] Set up monitoring
+- [ ] Run database migrations
+
+### Environment Variables for Production
+```env
+NODE_ENV=production
+DATABASE_URL="postgresql://username:password@production-host:5432/pie_backend"
+PORT=8000
+CORS_ORIGIN=https://yourdomain.com
+JWT_SECRET=your-jwt-secret
+```
+
+### Database Migration
+For production deployments, use Prisma migrations:
+```bash
+# Create migration
+npx prisma migrate dev --name init
+
+# Deploy migration to production
+npx prisma migrate deploy
+```
+
+## 📝 API Response Format
+
+...existing code...
+
+## 🤝 Contributing
+
+...existing code...
+
+## 📄 License
+
+This project is licensed under the ISC License.
+
+## 📞 Support
+
+For support and questions:
+- Create an issue on GitHub
+- Contact: [your-email@example.com]
+
+---
 
 **Happy Coding! 🎉**

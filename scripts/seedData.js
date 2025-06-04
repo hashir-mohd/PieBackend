@@ -1,18 +1,16 @@
-import mongoose from 'mongoose';
+import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
-import User from '../models/User.js';
-import Video from '../models/Video.js';
-import MetaItem from '../models/MetaItem.js';
-import Interaction from '../models/Interaction.js';
 
 dotenv.config();
 
+const prisma = new PrismaClient();
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URL);
-    console.log('MongoDB Connected for seeding');
+    await prisma.$connect();
+    console.log('PostgreSQL Connected for seeding');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('PostgreSQL connection error:', error);
     process.exit(1);
   }
 };
@@ -20,118 +18,128 @@ const connectDB = async () => {
 const seedData = async () => {
   try {
     // Clear existing data
-    await User.deleteMany({});
-    await Video.deleteMany({});
-    await MetaItem.deleteMany({});
-    await Interaction.deleteMany({});
+    await prisma.interaction.deleteMany({});
+    await prisma.metaItem.deleteMany({});
+    await prisma.video.deleteMany({});
+    await prisma.user.deleteMany({});
     
     console.log('Cleared existing data');
 
     // Create dummy users
-    const users = await User.insertMany([
-      {
-        username: 'john_doe',
-        avatarUrl: 'https://picsum.photos/150/150?random=1'
-      },
-      {
-        username: 'jane_smith',
-        avatarUrl: 'https://picsum.photos/150/150?random=2'
-      },
-      {
-        username: 'bob_wilson',
-        avatarUrl: 'https://picsum.photos/150/150?random=3'
-      },
-      {
-        username: 'alice_johnson',
-        avatarUrl: 'https://picsum.photos/150/150?random=4'
-      }
-    ]);
+    const users = await prisma.user.createMany({
+      data: [
+        {
+          username: 'john_doe',
+          avatarUrl: 'https://picsum.photos/150/150?random=1'
+        },
+        {
+          username: 'jane_smith',
+          avatarUrl: 'https://picsum.photos/150/150?random=2'
+        },
+        {
+          username: 'bob_wilson',
+          avatarUrl: 'https://picsum.photos/150/150?random=3'
+        },
+        {
+          username: 'alice_johnson',
+          avatarUrl: 'https://picsum.photos/150/150?random=4'
+        }
+      ]
+    });
 
+    // Get created users
+    const createdUsers = await prisma.user.findMany();
     console.log('Created dummy users');
 
     // Create dummy videos
-    const videos = await Video.insertMany([
+    const videoData = [
       {
         title: 'Amazing Nature Documentary',
         description: 'Explore the wonders of wildlife in this stunning documentary',
         videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
-        userId: users[0]._id
+        userId: createdUsers[0].id
       },
       {
         title: 'Cooking Tutorial: Italian Pasta',
         description: 'Learn how to make authentic Italian pasta from scratch',
         videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
-        userId: users[1]._id
+        userId: createdUsers[1].id
       },
       {
         title: 'Travel Vlog: Tokyo Adventure',
         description: 'Join me as I explore the vibrant streets of Tokyo',
         videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
-        userId: users[2]._id
+        userId: createdUsers[2].id
       },
       {
         title: 'Tech Review: Latest Smartphone',
         description: 'Comprehensive review of the newest smartphone features',
         videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
-        userId: users[0]._id
+        userId: createdUsers[0].id
       },
       {
         title: 'Fitness Workout: Morning Routine',
         description: 'Start your day with this energizing 20-minute workout',
         videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
-        userId: users[3]._id
+        userId: createdUsers[3].id
       }
-    ]);
+    ];
 
+    await prisma.video.createMany({ data: videoData });
+    const createdVideos = await prisma.video.findMany();
     console.log('Created dummy videos');
 
     // Create dummy meta items
-    const metaItems = [];
-    videos.forEach((video, index) => {
-      metaItems.push(
+    const metaItemsData = [];
+    createdVideos.forEach((video, index) => {
+      metaItemsData.push(
         {
-          videoId: video._id,
+          videoId: video.id,
+          type: 'tag',
+          value: `tag-${index + 1}`,
           thumbnailUrl: `https://picsum.photos/320/180?random=${index * 2 + 10}`,
           label: `Thumbnail ${index + 1}`
         },
         {
-          videoId: video._id,
+          videoId: video.id,
+          type: 'category',
+          value: `category-${index + 1}`,
           thumbnailUrl: `https://picsum.photos/320/180?random=${index * 2 + 11}`,
           label: `Preview ${index + 1}`
         }
       );
     });
 
-    await MetaItem.insertMany(metaItems);
+    await prisma.metaItem.createMany({ data: metaItemsData });
     console.log('Created dummy meta items');
 
     // Create dummy interactions
-    const interactions = [];
+    const interactionsData = [];
     
     // Add likes, views, and comments
-    videos.forEach(video => {
-      users.forEach((user, userIndex) => {
+    createdVideos.forEach(video => {
+      createdUsers.forEach((user, userIndex) => {
         // Add views for all users
-        interactions.push({
-          userId: user._id,
-          videoId: video._id,
+        interactionsData.push({
+          userId: user.id,
+          videoId: video.id,
           type: 'view'
         });
 
         // Add likes for some users
         if (userIndex % 2 === 0) {
-          interactions.push({
-            userId: user._id,
-            videoId: video._id,
+          interactionsData.push({
+            userId: user.id,
+            videoId: video.id,
             type: 'like'
           });
         }
 
         // Add comments for some users
         if (userIndex < 2) {
-          interactions.push({
-            userId: user._id,
-            videoId: video._id,
+          interactionsData.push({
+            userId: user.id,
+            videoId: video.id,
             type: 'comment',
             content: `Great video! This is a comment from ${user.username}`
           });
@@ -139,24 +147,26 @@ const seedData = async () => {
       });
     });
 
-    await Interaction.insertMany(interactions);
+    await prisma.interaction.createMany({ 
+      data: interactionsData,
+      skipDuplicates: true 
+    });
     console.log('Created dummy interactions');
 
     console.log('\n✅ Database seeded successfully!');
-    console.log(`Created ${users.length} users`);
-    console.log(`Created ${videos.length} videos`);
-    console.log(`Created ${metaItems.length} meta items`);
-    console.log(`Created ${interactions.length} interactions`);
+    console.log(`Created ${createdUsers.length} users`);
+    console.log(`Created ${createdVideos.length} videos`);
+    console.log(`Created ${metaItemsData.length} meta items`);
+    console.log(`Created ${interactionsData.length} interactions`);
     
     console.log('\n📋 Test Data Summary:');
-    console.log('Users:', users.map(u => ({ id: u._id, username: u.username })));
+    console.log('Users:', createdUsers.map(u => ({ id: u.id, username: u.username })));
     console.log('\n🚀 You can now test the API endpoints with Postman!');
-    console.log('Note: You\'ll need to implement authentication middleware or temporarily bypass it for testing');
 
   } catch (error) {
     console.error('Error seeding data:', error);
   } finally {
-    await mongoose.connection.close();
+    await prisma.$disconnect();
     console.log('Database connection closed');
   }
 };

@@ -1,7 +1,4 @@
-import Video from '../models/Video.js';
-import User from '../models/User.js';
-import MetaItem from '../models/MetaItem.js';
-import Interaction from '../models/Interaction.js';
+import { prisma } from '../db/index.js';
 
 // Create video with metadata
 // This function creates a new video record and optionally associates meta items with it
@@ -18,39 +15,55 @@ export const createVideo = async (req, res) => {
       });
     }
 
-    // Create video record in database
-    const video = new Video({
-      title,
-      description,
-      videoUrl,
-      userId
+    // Create video record with meta items in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create video record in database
+      const video = await tx.video.create({
+        data: {
+          title,
+          description,
+          videoUrl,
+          userId
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatarUrl: true
+            }
+          }
+        }
+      });
+
+      // Create associated meta items if provided (like tags, categories, etc.)
+      let videoMetaItems = [];
+      if (metaItems && Array.isArray(metaItems)) {
+        const metaItemsData = metaItems.map(item => ({
+          ...item,
+          videoId: video.id // Link meta items to the created video
+        }));
+        
+        videoMetaItems = await tx.metaItem.createMany({
+          data: metaItemsData,
+          skipDuplicates: true
+        });
+
+        // Fetch created meta items
+        videoMetaItems = await tx.metaItem.findMany({
+          where: { videoId: video.id }
+        });
+      }
+
+      return { video, metaItems: videoMetaItems };
     });
-
-    await video.save();
-
-    // Create associated meta items if provided (like tags, categories, etc.)
-    if (metaItems && Array.isArray(metaItems)) {
-      const metaItemsData = metaItems.map(item => ({
-        ...item,
-        videoId: video._id // Link meta items to the created video
-      }));
-      await MetaItem.insertMany(metaItemsData);
-    }
-
-    // Fetch the complete video with populated user data (username, avatar)
-    const createdVideo = await Video.findById(video._id)
-      .populate('userId', 'username avatarUrl')
-      .lean();
-
-    // Get all meta items associated with this video
-    const videoMetaItems = await MetaItem.find({ videoId: video._id }).lean();
 
     // Return success response with complete video data
     res.status(201).json({
       success: true,
       data: {
-        ...createdVideo,
-        metaItems: videoMetaItems
+        ...result.video,
+        metaItems: result.metaItems
       }
     });
   } catch (error) {
@@ -71,41 +84,50 @@ export const getVideos = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Get videos with user data, sorted by creation date (newest first)
-    const videos = await Video.find()
-      .populate('userId', 'username avatarUrl') // Include user's username and avatar
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(); // Use lean() for better performance (returns plain JS objects)
-
-    // Get all video IDs for batch operations
-    const videoIds = videos.map(video => video._id);
-    
-    // Fetch meta items for all videos in one query (efficient batch operation)
-    const metaItems = await MetaItem.find({ videoId: { $in: videoIds } }).lean();
-
-    // Get interaction counts (likes, views, comments) using aggregation pipeline
-    const interactionCounts = await Interaction.aggregate([
-      { $match: { videoId: { $in: videoIds } } }, // Filter interactions for our videos
-      {
-        $group: {
-          _id: { videoId: '$videoId', type: '$type' }, // Group by video and interaction type
-          count: { $sum: 1 } // Count interactions of each type
+    // Get videos with user data and meta items, sorted by creation date (newest first)
+    const videos = await prisma.video.findMany({
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatarUrl: true
+          }
+        },
+        metaItems: true,
+        _count: {
+          select: {
+            interactions: {
+              where: { type: 'like' }
+            }
+          }
         }
       }
-    ]);
+    });
+
+    // Get interaction counts for all videos using aggregation
+    const videoIds = videos.map(video => video.id);
+    
+    const interactionCounts = await prisma.interaction.groupBy({
+      by: ['videoId', 'type'],
+      where: {
+        videoId: {
+          in: videoIds
+        }
+      },
+      _count: {
+        id: true
+      }
+    });
 
     // Combine all data for each video
     const videosWithMetadata = videos.map(video => {
-      // Find meta items belonging to this specific video
-      const videoMetaItems = metaItems.filter(
-        item => item.videoId.toString() === video._id.toString()
-      );
-
       // Find interaction counts for this specific video
       const videoInteractions = interactionCounts.filter(
-        interaction => interaction._id.videoId.toString() === video._id.toString()
+        interaction => interaction.videoId === video.id
       );
 
       // Initialize interaction statistics with default values
@@ -117,19 +139,19 @@ export const getVideos = async (req, res) => {
 
       // Populate actual interaction counts
       videoInteractions.forEach(interaction => {
-        interactionStats[interaction._id.type + 's'] = interaction.count;
+        const type = interaction.type + 's';
+        interactionStats[type] = interaction._count.id;
       });
 
       // Return video with all associated data
       return {
         ...video,
-        metaItems: videoMetaItems,
         interactions: interactionStats
       };
     });
 
     // Calculate pagination metadata
-    const totalCount = await Video.countDocuments();
+    const totalCount = await prisma.video.count();
     const totalPages = Math.ceil(totalCount / limit);
 
     // Return paginated response with metadata

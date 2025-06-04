@@ -1,19 +1,21 @@
-import mongoose from "mongoose";
+import { PrismaClient } from '@prisma/client';
 import dotenv from "dotenv";
-dotenv.config({});
 
+dotenv.config();
 
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
 
 const connectDB = async () => {
   try {
-    const connectionInstance = await mongoose.connect(
-      `${process.env.MONGODB_URL}`
-    );
-    console.log(`\n MongoDB Connected !!`);
+    await prisma.$connect();
+    console.log('\n PostgreSQL Connected with Prisma !!');
   } catch (error) {
-    console.log("MONGODB could not be connected :", error);
-    process.exit(1); //diff ways to exit code in NodeJs
+    console.log("PostgreSQL could not be connected :", error);
+    process.exit(1);
   }
 };
 
+export { prisma };
 export default connectDB;

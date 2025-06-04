@@ -3,9 +3,7 @@ import connectDB from "./db/index.js";
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-dotenv.config({
-  path: "./.env",
-});
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 8000;

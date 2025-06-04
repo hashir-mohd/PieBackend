@@ -92,11 +92,6 @@ This creates:
 
 ### 6. Start the Server
 
-#### Development Mode
-```bash
-npm start
-```
-
 #### Production Mode
 ```bash
 node index.js
@@ -268,27 +263,7 @@ Create a new Postman collection with the following requests:
 - **Method**: GET  
 - **URL**: `{{baseUrl}}/api/videos?page=1&limit=3`
 
-### 4. Expected Status Codes
-- `200`: Success (GET requests)
-- `201`: Created (POST requests)
-- `400`: Bad Request (validation errors)
-- `404`: Not Found
-- `500`: Internal Server Error
 
-## 🔧 Development
-
-### Available Scripts
-
-```bash
-# Start development server with auto-reload
-npm start
-
-# Seed database with sample data
-npm run seed
-
-# Run tests (to be implemented)
-npm test
-```
 
 ### Code Structure Guidelines
 
@@ -298,109 +273,5 @@ npm test
 - **Routes**: Define API endpoints
 - **Scripts**: Utility scripts (seeding, migrations)
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. MongoDB Connection Error
-```
-MONGODB could not be connected
-```
-**Solutions:**
-- Ensure MongoDB is running locally
-- Check MongoDB URL in `.env` file
-- Verify network connectivity for MongoDB Atlas
-
-#### 2. Port Already in Use
-```
-Error: listen EADDRINUSE :::8000
-```
-**Solutions:**
-- Change PORT in `.env` file
-- Stop other processes using port 8000
-- Use `netstat -ano | findstr :8000` (Windows) to find conflicting processes
-
-#### 3. Module Not Found Errors
-```
-Cannot find module './models/Video.js'
-```
-**Solutions:**
-- Run `npm install` to ensure all dependencies are installed
-- Check file paths and extensions (.js)
-- Ensure you're using ES6 modules (type: "module" in package.json)
-
-#### 4. Authentication Issues
-The current setup uses mock authentication for testing. For production:
-- Implement proper JWT token verification
-- Add user registration/login endpoints
-- Update auth middleware accordingly
-
-### Debug Mode
-Add debug logging by setting environment variable:
-```bash
-DEBUG=app:* npm start
-```
-
-## 🚀 Deployment
-
-### Production Checklist
-- [ ] Update authentication middleware
-- [ ] Add input validation
-- [ ] Configure production MongoDB
-- [ ] Set up environment variables
-- [ ] Add rate limiting
-- [ ] Configure HTTPS
-- [ ] Add logging service
-- [ ] Set up monitoring
-
-### Environment Variables for Production
-```env
-NODE_ENV=production
-MONGODB_URL=mongodb+srv://...
-PORT=8000
-CORS_ORIGIN=https://yourdomain.com
-JWT_SECRET=your-jwt-secret
-```
-
-## 📝 API Response Format
-
-All API responses follow this structure:
-
-### Success Response
-```json
-{
-  "success": true,
-  "data": {...},
-  "pagination": {...} // Only for paginated endpoints
-}
-```
-
-### Error Response
-```json
-{
-  "success": false,
-  "message": "Error description"
-}
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the ISC License.
-
-## 📞 Support
-
-For support and questions:
-- Create an issue on GitHub
-- Contact: [your-email@example.com]
-
----
 
 **Happy Coding! 🎉**

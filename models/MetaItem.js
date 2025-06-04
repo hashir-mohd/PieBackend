@@ -6,13 +6,25 @@ const metaItemSchema = new mongoose.Schema({
     ref: 'Video',
     required: true
   },
+  type: {
+    type: String,
+    required: true,
+    trim: true,
+    enum: ['tag', 'category', 'genre', 'location', 'custom']
+  },
+  value: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  // Optional fields for future use
   thumbnailUrl: {
     type: String,
-    required: true
+    required: false
   },
   label: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   }
 }, {

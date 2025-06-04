@@ -5,7 +5,7 @@ export const authenticateUser = (req, res, next) => {
   // For testing purposes, we'll mock a user
   // In production, implement proper JWT token verification
   req.user = {
-    id: '507f1f77bcf86cd799439011', // Replace with actual user ID from seeded data
+    id: '683fd53b66f33f1f961df536', // Replace with actual user ID from seeded data
     username: 'john_doe'
   };
   next();
